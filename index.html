@@ -68,6 +68,7 @@
             justify-content: center;
             align-items: center;
             border-radius: 42px;
+            transition: opacity 0.3s ease;
         }
 
         .verify-card {
@@ -161,7 +162,7 @@
             margin-top: 6px;
         }
 
-        /* ---------- MAIN PAGE (BAR သုံးခု) ---------- */
+        /* ---------- MAIN PAGE ---------- */
         #mainPage {
             display: block;
             padding: 24px 20px 30px 20px;
@@ -710,7 +711,11 @@
 
     <script>
         (function() {
-            // ---------- CLOUDFLARE TURNSTILE VERIFICATION ----------
+            // ---------- LOCAL STORAGE VERIFICATION CHECK ----------
+            const VERIFIED_KEY = 'lottery_hub_verified';
+            const VERIFIED_TIMESTAMP_KEY = 'lottery_hub_verified_timestamp';
+            const VERIFICATION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
             const verifyOverlay = document.getElementById('verifyOverlay');
             const verifyBtn = document.getElementById('verifyBtn');
             const mainPage = document.getElementById('mainPage');
@@ -718,24 +723,55 @@
             
             let turnstileToken = null;
 
-            // Turnstile callback (ဒီ function ကို Turnstile က အလိုအလျောက်ခေါ်မယ်)
+            // Check if user was previously verified (within 24 hours)
+            function checkPreviousVerification() {
+                const verified = localStorage.getItem(VERIFIED_KEY);
+                const timestamp = localStorage.getItem(VERIFIED_TIMESTAMP_KEY);
+                
+                if (verified === 'true' && timestamp) {
+                    const now = new Date().getTime();
+                    const timeDiff = now - parseInt(timestamp);
+                    
+                    // If within 24 hours, hide overlay
+                    if (timeDiff < VERIFICATION_DURATION) {
+                        verifyOverlay.style.display = 'none';
+                        return true;
+                    } else {
+                        // Clear expired verification
+                        localStorage.removeItem(VERIFIED_KEY);
+                        localStorage.removeItem(VERIFIED_TIMESTAMP_KEY);
+                    }
+                }
+                return false;
+            }
+
+            // Save verification to local storage
+            function saveVerification() {
+                const now = new Date().getTime();
+                localStorage.setItem(VERIFIED_KEY, 'true');
+                localStorage.setItem(VERIFIED_TIMESTAMP_KEY, now.toString());
+            }
+
+            // Initial check
+            const isVerified = checkPreviousVerification();
+
+            // Turnstile callback
             window.onTurnstileSuccess = function(token) {
                 turnstileToken = token;
                 verifyBtn.disabled = false;
-                console.log('Turnstile Token:', token); // Server ပို့ဖို့အတွက်
+                console.log('Turnstile Token:', token);
             };
 
             // Verify button click
             verifyBtn.addEventListener('click', function() {
                 if (turnstileToken) {
-                    // ** အရေးကြီးဆုံး **
-                    // ဒီနေရာမှာ token ကို မင်းရဲ့ Server ဆီပို့ပြီး Cloudflare ကို ပြန်စစ်ရမယ်
-                    // ဥပမာ - fetch('/verify-turnstile', { method: 'POST', body: JSON.stringify({ token: turnstileToken }) })
-                    // အောက်က alert က နမူနာပဲ။
+                    // Here you would verify with your server
+                    // For demo, we'll just simulate success
                     
-                    alert('Verification successful! Lottery Site ရွေးပြီးအသုံးပြုလို့ရပါပြီ။');
+                    // Save to local storage
+                    saveVerification();
                     
-                    // Overlay ဖျောက်ပြီး Main Page ပြမယ်
+                    // Hide overlay
                     verifyOverlay.style.display = 'none';
                 }
             });
@@ -799,10 +835,12 @@
                 tab.addEventListener('click', function() {
                     tabs.forEach(t => {
                         t.classList.remove('active');
-                        t.querySelector('.game-icon').style.color = '#888';
+                        const icon = t.querySelector('.game-icon');
+                        if (icon) icon.style.color = '#888';
                     });
                     this.classList.add('active');
-                    this.querySelector('.game-icon').style.color = 'var(--theme-red)';
+                    const activeIcon = this.querySelector('.game-icon');
+                    if (activeIcon) activeIcon.style.color = 'var(--theme-red)';
                     currentGame = this.dataset.game;
                     if (periodInput.value.trim()) checkResult();
                 });
@@ -852,11 +890,11 @@
             // Initial state
             mainPage.style.display = 'block';
             resultPage.style.display = 'none';
-            // Overlay က စချင်းပေါ်နေမယ် (ဖျောက်မထားဘူး)
-        })();
-    </script>
-</body>
-</html>�နေမယ် (ဖျောက်မထားဘူး)
+            
+            // If already verified, hide overlay
+            if (isVerified) {
+                verifyOverlay.style.display = 'none';
+            }
         })();
     </script>
 </body>
